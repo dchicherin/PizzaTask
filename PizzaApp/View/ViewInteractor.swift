@@ -54,7 +54,11 @@ class ViewInteractor: ViewInteractorInput{
             let downloadOperation = DownloadOperation(url: schedulePositonForImage.image )
             downloadOperation.completionBlock = {
                 DispatchQueue.main.async {
-                    guard let imageUI = UIImage(data: downloadOperation.outputImage!)
+                    guard let data =  downloadOperation.outputImage
+                    else {
+                        return
+                    }
+                    guard let imageUI = UIImage(data: data)
                     else {
                         return
                     }
