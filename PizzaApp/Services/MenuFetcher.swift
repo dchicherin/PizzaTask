@@ -35,7 +35,7 @@ class MenuFetcher {
             switch result {
             case .success(let data) :
                 completion(data)
-            case .failure(let error):
+            case .failure(_):
                 completion([MenuItem]())
             }
         }

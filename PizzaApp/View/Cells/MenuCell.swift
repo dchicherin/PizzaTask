@@ -9,6 +9,8 @@ import Foundation
 import UIKit
 
 class MenuTableCell: UITableViewCell {
+    var type = ""
+    
     private let titleLabel: UILabel = {
         //Заголовок
         let label = UILabel()
@@ -92,6 +94,7 @@ class MenuTableCell: UITableViewCell {
         if image != nil {
             cellImageView.image = image
         }
+        type = cellData.type
         priceLabel.text = "От \(cellData.price.description) р"
     }
 }

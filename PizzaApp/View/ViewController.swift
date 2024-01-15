@@ -7,14 +7,31 @@
 
 import UIKit
 
+
+protocol ViewControllerOutput {
+    func updateInfo(menuItems: [MenuItem])
+    func updateRowImage(menuPositionForImage: MenuItem, image: UIImage)
+    func scrollToCategory(indexPath: IndexPath)
+    func setHeightAndSpace(newSpacer: CGFloat, newHeight: CGFloat)
+}
+
 class ViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource {
+    var interactor: ViewInteractorInput?
+    //Баннеры-плейсхолддеры
     private var banners: [Banner] = [Banner(), Banner()]
-    private let scrollContentLength = 0
+    //Порядок категорий
+    let mapping: [String: Int] = ["pizza": 0, "combo": 1, "desert": 2, "drink": 3]
+    //Данные для заполнения
     private var menuItems = [MenuItem]()
     var imagesDict: [Int: UIImage] = [:]
-    var newHeight = 0.0
+    //Изменяемыйе констрейны
     var heightConstrain: NSLayoutConstraint?
     var bottomConstraint: NSLayoutConstraint?
+    //Текущая категория
+    private var checkedCategory = 0
+    
+    
+    /*       Создание элементов          */
     
     
     let tabsBarController: UITabBarController = {
@@ -76,7 +93,7 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         collectionView.contentInset = UIEdgeInsets.zero
         return collectionView
     }()
-    private var checkedCategory = 0
+    
 
     lazy private var scrollView: UIScrollView = {
         //Scrollview с кнопками для выбора категорий
@@ -129,6 +146,50 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         return scrollView
     }()
 
+    private let dropdownControl: UIButton = {
+        
+        //Дропдаун с выбором города
+        let dropdownControl = UIButton()
+        dropdownControl.setTitle("Москва ", for: .normal)
+        dropdownControl.setTitleColor(.black, for: .normal)
+        dropdownControl.titleLabel?.font = UIFont.systemFont(ofSize: Constants.shared.bigTextSize) 
+        dropdownControl.contentHorizontalAlignment = .left
+        dropdownControl.translatesAutoresizingMaskIntoConstraints = false
+        dropdownControl.heightAnchor.constraint(equalToConstant: Constants.shared.dropdownControlHeight).isActive = true
+        dropdownControl.widthAnchor.constraint(equalToConstant: Constants.shared.dropdownControlWidth).isActive = true
+        dropdownControl.addTarget(self, action: #selector(showDropdownMenu), for: .touchUpInside)
+        
+        //Добавление картики справа
+        let chevronImage = UIImage(systemName: "chevron.down")
+        dropdownControl.tintColor = .black
+        dropdownControl.setImage(chevronImage, for: .normal)
+        dropdownControl.semanticContentAttribute = .forceRightToLeft
+        return dropdownControl
+    }()
+    
+    
+    /* Функционал кнопок */
+
+    @objc func showDropdownMenu() {
+        //Выбор из 2 городов в стандартом системном меню и установка его в дропдаун
+        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+        let moscowAction = UIAlertAction(title: "Москва", style: .default) { _ in
+            self.dropdownControl.setTitle("Москва ", for: .normal)
+        }
+        alertController.addAction(moscowAction)
+        let stPetersburgAction = UIAlertAction(title: "Санкт-Петербург", style: .default) { _ in
+            self.dropdownControl.setTitle("Санкт-Петербург ", for: .normal)
+        }
+        alertController.addAction(stPetersburgAction)
+        let cancelAction = UIAlertAction(title: "Отмена", style: .cancel, handler: nil)
+        alertController.addAction(cancelAction)
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = dropdownControl
+            popoverController.sourceRect = dropdownControl.bounds
+        }
+        present(alertController, animated: true, completion: nil)
+    }
+    
     @objc private func buttonClicked(_ sender: UIButton) {
         checkedCategory = sender.tag
         //Перекрашивание кнопок
@@ -148,91 +209,13 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
             }
         }
         //Скролл к нужной категории
-        var index = 0
-        switch sender.tag {
-        case 0:
-            index = menuItems.firstIndex(where: {$0.type == "pizza"}) ?? 0
-        case 1:
-            index = menuItems.firstIndex(where: {$0.type == "combo"}) ?? 0
-        case 2:
-            index = menuItems.firstIndex(where: {$0.type == "desert"}) ?? 0
-        case 3:
-            index = menuItems.firstIndex(where: {$0.type == "drink"}) ?? 0
-        default:
-            index = 0
-        }
-        
-        let indexPath = IndexPath(row: index, section: 0)
-        tableView.scrollToRow(at: indexPath as IndexPath, at: .top, animated: true)
-    }
-    private let dropdownControl: UIButton = {
-        //Дропдаун с выбором города
-        let dropdownControl = UIButton()
-        dropdownControl.setTitle("Москва ", for: .normal)
-        dropdownControl.setTitleColor(.black, for: .normal)
-        dropdownControl.titleLabel?.font = UIFont.systemFont(ofSize: Constants.shared.bigTextSize) 
-        dropdownControl.contentHorizontalAlignment = .left
-        dropdownControl.translatesAutoresizingMaskIntoConstraints = false
-        dropdownControl.heightAnchor.constraint(equalToConstant: Constants.shared.dropdownControlHeight).isActive = true
-        dropdownControl.widthAnchor.constraint(equalToConstant: Constants.shared.dropdownControlWidth).isActive = true
-        dropdownControl.addTarget(self, action: #selector(showDropdownMenu), for: .touchUpInside)
-        
-        //Добавление картики справа
-        let chevronImage = UIImage(systemName: "chevron.down")
-        dropdownControl.tintColor = .black
-        dropdownControl.setImage(chevronImage, for: .normal)
-        dropdownControl.semanticContentAttribute = .forceRightToLeft
-        return dropdownControl
-    }()
-
-    @objc private func showDropdownMenu() {
-        //Выбор из 2 городов в стандартом системном меню и установка его в дропдаун
-        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        let moscowAction = UIAlertAction(title: "Москва ", style: .default) { _ in
-            self.dropdownControl.setTitle("Москва", for: .normal)
-        }
-        alertController.addAction(moscowAction)
-        
-        let stPetersburgAction = UIAlertAction(title: "Санкт-Петербург", style: .default) { _ in
-            self.dropdownControl.setTitle("Санкт-Петербург ", for: .normal)
-        }
-        alertController.addAction(stPetersburgAction)
-        
-        let cancelAction = UIAlertAction(title: "Отмена", style: .cancel, handler: nil)
-        alertController.addAction(cancelAction)
-        
-        if let popoverController = alertController.popoverPresentationController {
-            popoverController.sourceView = dropdownControl
-            popoverController.sourceRect = dropdownControl.bounds
-        }
-        
-        present(alertController, animated: true, completion: nil)
+        interactor?.initScrolling(tag: sender.tag, menuItems: self.menuItems)
     }
     
     override func viewDidLoad() {
         //Получение данных
-        let myFetch = MenuFetcher(networkClient: NetworkClient())
-        myFetch.getMenuItems() { data in
-            if data.isEmpty {
-                self.menuItems = DatabaseManager.shared.getAllMenuItems()
-            } else {
-                self.menuItems = data
-                DatabaseManager.shared.updateMenuItems(data)
-            }
-            //Сортирвка для соответствия категориям
-            self.menuItems.sort { (item1, item2) -> Bool in
-                let typeOrder: [String] = ["pizza", "combo", "desert", "drink"]
-                guard let index1 = typeOrder.firstIndex(of: item1.type),
-                      let index2 = typeOrder.firstIndex(of: item2.type) else {
-                    return false
-                }
-                return index1 < index2
-            }
-            self.tableView.reloadData()
-            //Асинхронная подгрузка картинок
-            self.downloadImages(imagesToLoad: data)
-        }
-        
+        interactor?.fetchData()
+
         super.viewDidLoad()
         view.backgroundColor = Constants.shared.backgroundColor
         
@@ -260,9 +243,11 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         // Добавление и настройка таблицы
         view.addSubview(tableView)
         tableView.register(MenuTableCell.self, forCellReuseIdentifier: "MenuTableCell")
-        tableView.contentInset = UIEdgeInsets(top: 20,left: 0,bottom: 0,right: 0)
+        //tableView.contentInset = UIEdgeInsets(top: 20,left: 0,bottom: 0,right: 0)
         tableView.dataSource = self
         tableView.delegate = self
+        
+        
         
         //Констрейны
         //Дропдаун
@@ -291,38 +276,13 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         tableView.bottomAnchor.constraint(equalTo: tabsBarController.tabBar.topAnchor, constant: -2).isActive = true
         
     }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
     override func viewWillLayoutSubviews(){
         super.viewWillLayoutSubviews()
         scrollView.contentSize = CGSize(width: Constants.shared.scrollViewWidth, height: Constants.shared.scrollViewHeight)
-    }
-    func downloadImages(imagesToLoad: [MenuItem]){
-        //Загрузка изображений асинхронно
-        let queueAsync = OperationQueue()
-        for schedulePositonForImage in imagesToLoad{
-            let downloadOperation = DownloadOperation(url: schedulePositonForImage.image )
-            downloadOperation.completionBlock = {
-                DispatchQueue.main.async {
-                    guard let imageUI = UIImage(data: downloadOperation.outputImage!)
-                    else {
-                        return
-                    }
-                    self.imagesDict[schedulePositonForImage.id] = imageUI
-                    //Обновляем только нужную строчку
-                    self.updateRawImage(menuPositionForImage: schedulePositonForImage, image: imageUI)
-                    
-                }
-            }
-            queueAsync.addOperation(downloadOperation)
-        }
-    }
-    func updateRawImage(menuPositionForImage: MenuItem, image: UIImage) {
-        //Непсредственнно обновление строки
-        self.imagesDict[menuPositionForImage.id] = image
-        self.tableView.beginUpdates()
-        let rowToUpdate = self.menuItems.firstIndex(where: {$0.id == menuPositionForImage.id})!
-        let indexPosition = IndexPath(row: rowToUpdate, section: 0)
-        self.tableView.reloadRows(at: [indexPosition], with: UITableView.RowAnimation.none)
-        self.tableView.endUpdates()
     }
 }
 
@@ -343,6 +303,8 @@ extension ViewController: UICollectionViewDelegateFlowLayout {
         let widthPerItem = Constants.shared.collectionViewWidth
         return CGSize(width:Int(widthPerItem), height: Int(Constants.shared.collectionViewHeight))
         }
+    
+    
 }
 extension ViewController:  UITableViewDataSource, UITableViewDelegate {
     //Настройка работ таблицы
@@ -360,24 +322,58 @@ extension ViewController:  UITableViewDataSource, UITableViewDelegate {
         return UITableView.automaticDimension
     }
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        //При скролле вниз потихоньку скрываем баннер
-        let offset = scrollView.contentOffset.y
-        var diff = -offset
-        if(offset > 10){
-            diff /= 20
+        if scrollView is UITableView {
+            interactor?.updateHeights(heightConstrain: heightConstrain!.constant, spacerContrant: bottomConstraint!.constant, offsetY: scrollView.contentOffset.y)
+            //Подсветка нужной категории
+            if !tableView.visibleCells.isEmpty {
+                let cellsOnScreen = tableView.visibleCells as! [MenuTableCell]
+                var categories = [Int]()
+                for cell in cellsOnScreen {
+                    categories.append(mapping[cell.type] ?? 0)
+                }
+                if !categories.contains(where: {$0 == checkedCategory}){
+                    let firstVisibleCell = tableView.visibleCells.first as! MenuTableCell
+                    let categoryNow = mapping[firstVisibleCell.type]!
+                    //Перекрашивание кнопок
+                    for subview in self.scrollView.subviews {
+                        if let button = subview as? UIButton {
+                            if button.tag == categoryNow {
+                                button.setTitleColor(Constants.shared.redColor, for: .normal)
+                                button.layer.borderColor = Constants.shared.redColor.cgColor
+                                button.backgroundColor = Constants.shared.redBGColor
+                                button.layer.borderWidth = 0
+                            } else {
+                                button.setTitleColor(Constants.shared.bleakRedColor, for: .normal)
+                                button.layer.borderColor = Constants.shared.bleakRedColor.cgColor
+                                button.layer.borderWidth = 1
+                                button.layer.backgroundColor = UIColor.clear.cgColor
+                            }
+                        }
+                    }
+                    checkedCategory = categoryNow
+                }
+            }
         }
-        var newHeight = heightConstrain!.constant + diff
-        var newSpacer = bottomConstraint!.constant + newHeight
-        if newHeight < 0 {
-            newSpacer = newSpacer > 0 ? newSpacer : 0
-            newHeight = 0
-            
-        } else if newHeight > Constants.shared.collectionViewHeight { // or whatever
-            newHeight = Constants.shared.collectionViewHeight
-        }
-        if newSpacer > Constants.shared.elementSpacing {
-            newSpacer = Constants.shared.elementSpacing
-        }
+    }
+}
+extension ViewController: ViewControllerOutput{
+    func updateInfo(menuItems: [MenuItem]){
+        self.menuItems = menuItems
+        tableView.reloadData()
+    }
+    func updateRowImage(menuPositionForImage: MenuItem, image: UIImage) {
+        //Непсредственнно обновление строки
+        self.imagesDict[menuPositionForImage.id] = image
+        self.tableView.beginUpdates()
+        let rowToUpdate = self.menuItems.firstIndex(where: {$0.id == menuPositionForImage.id})!
+        let indexPosition = IndexPath(row: rowToUpdate, section: 0)
+        self.tableView.reloadRows(at: [indexPosition], with: UITableView.RowAnimation.none)
+        self.tableView.endUpdates()
+    }
+    func scrollToCategory(indexPath: IndexPath){
+        tableView.scrollToRow(at: indexPath as IndexPath, at: .top, animated: true)
+    }
+    func setHeightAndSpace(newSpacer: CGFloat, newHeight: CGFloat){
         bottomConstraint!.constant = newSpacer
         heightConstrain!.constant = newHeight
     }
